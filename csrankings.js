@@ -1220,51 +1220,131 @@ class CSRankings {
             }
         }
     }
-    /* PUBLIC METHODS */
+        /* PUBLIC METHODS */
+    /* ---------------------------------------------------------------
+    * 1.  Build a single global faculty table (no departments shown)
+    * --------------------------------------------------------------*/
+    buildFacultyTable(facultycount, facultyAdjustedCount) {
+        // Sort: raw pubs ↓, then adjusted pubs ↓, then last-name A→Z
+        const keys = Object.keys(facultycount).sort((a, b) => {
+            if (facultycount[b] === facultycount[a]) {
+                const fb = Math.round(10 * facultyAdjustedCount[b]) / 10;
+                const fa = Math.round(10 * facultyAdjustedCount[a]) / 10;
+                return fb === fa ? this.compareNames(a, b) : fb - fa;
+            }
+            return facultycount[b] - facultycount[a];
+        });
+
+        let html =
+            '<div class="table"><table class="table table-sm table-striped">' +
+            '<thead>' +
+            '<th align="left">#</th>' +
+            '<th></th>' +
+            '<td><small><em><abbr title="Click on an author&#39;s name to go to their home page.">Faculty</abbr></em></small></td>' +
+            '<td align="right"><small><em>&nbsp;&nbsp;<abbr title="Total number of publications (click for DBLP entry).">#&nbsp;Pubs</abbr></em></small></td>' +
+            '<td align="right"><small><em><abbr title="Count divided by number of co-authors">Adj.&nbsp;#</abbr></em></small></td>' +
+            '</thead><tbody>';
+
+        keys.forEach((name, idx) => {
+            const homePage = encodeURI(this.homepages[name]);
+            const dblpName = this.dblpAuthors[name];
+            const pubs     = facultycount[name];
+            const adjPubs  = (Math.round(10 * facultyAdjustedCount[name]) / 10).toFixed(1);
+            const rank     = idx + 1;
+
+            html += `<tr>
+                        <td>${rank}</td>
+                        <td></td>
+                        <td><small>
+                            <a title="Click for author&#39;s home page." target="_blank" href="${homePage}"
+                            onclick="trackOutboundLink('${homePage}', true); return false;">${name}</a>&nbsp;`;
+
+            /* Notes / badges */
+            if (this.note?.[name]) {
+                const url = CSRankings.noteMap[this.note[name]];
+                html += `<span class="note" title="Note">[<a href="${url}">${this.note[name]}</a>]</span>&nbsp;`;
+            }
+            if (this.acmfellow?.[name]) {
+                html += `<span title="ACM Fellow (${this.acmfellow[name]})"><img alt="ACM Fellow" src="${this.acmfellowImage}"></span>&nbsp;`;
+            }
+            if (this.turing?.[name]) {
+                html += `<span title="Turing Award"><img alt="Turing Award" src="${this.turingImage}"></span>&nbsp;`;
+            }
+
+            /* Areas + links */
+            html += `<span class="areaname">${this.areaString(name).toLowerCase()}</span>&nbsp;` +
+                    `<a title="Click for author&#39;s home page." target="_blank" href="${homePage}" ` +
+                    `onclick="trackOutboundLink('${homePage}', true); return false;">` +
+                    `<img alt="Home page" src="${this.homepageImage}"></a>&nbsp;`;
+
+            if (this.scholarInfo?.[name] && this.scholarInfo[name] !== "NOSCHOLARPAGE") {
+                const gUrl = `https://scholar.google.com/citations?user=${this.scholarInfo[name]}&hl=en&oi=ao`;
+                html += `<a title="Click for author&#39;s Google Scholar page." target="_blank" href="${gUrl}" ` +
+                        `onclick="trackOutboundLink('${gUrl}', true); return false;">` +
+                        `<img alt="Google Scholar" src="scholar-favicon.ico" height="10" width="10"></a>&nbsp;`;
+            }
+
+            html += `<a title="Click for author&#39;s DBLP entry." target="_blank" href="${dblpName}" ` +
+                    `onclick="trackOutboundLink('${dblpName}', true); return false;">` +
+                    `<img alt="DBLP" src="dblp.png"></a>` +
+                    `<span onclick='csr.toggleChart("${escape(name)}");' ` +
+                    `title="Click for author&#39;s publication profile." class="hovertip" id="${escape(name)}-chartwidget">` +
+                    this.ChartIcon + `</span></small></td>` +
+                    `<td align="right"><small>${pubs}</small></td>` +
+                    `<td align="right"><small>${adjPubs}</small></td>` +
+                `</tr>
+                <tr><td colspan="5"><div class="csr-chart" id="${escape(name)}-chart"></div></td></tr>`;
+        });
+
+        html += '</tbody></table></div>';
+        return html;
+    }
+
+    /* ---------------------------------------------------------------
+    * 2.  Simple wrapper = prologue + table + epilogue
+    * --------------------------------------------------------------*/
+    buildFacultyOutputString(tableHTML) {
+        return this.makePrologue() + tableHTML + '</body></html>';
+    }
+
+    /* ---------------------------------------------------------------
+    * 3.  rank() now renders only the faculty table
+    * --------------------------------------------------------------*/
     rank(update = true) {
         const start = performance.now();
-        let deptNames = {}; /* names of departments. */
-        let deptCounts = {}; /* number of faculty in each department. */
-        let facultycount = {}; /* name -> raw count of pubs per name / department */
-        let facultyAdjustedCount = {}; /* name -> adjusted count of pubs per name / department */
-        let currentWeights = {}; /* array to hold 1 or 0, depending on if the area is checked or not. */
-        this.areaDeptAdjustedCount = {};
-        const startyear = parseInt($("#fromyear").find(":selected").text());
-        const endyear = parseInt($("#toyear").find(":selected").text());
+
+        // Gather stats exactly as before
+        const deptNames            = {};
+        const deptCounts           = {};
+        const facultycount         = {};
+        const facultyAdjustedCount = {};
+        const currentWeights       = {};
+
+        const startyear    = parseInt($("#fromyear").find(":selected").text(), 10);
+        const endyear      = parseInt($("#toyear").find(":selected").text(), 10);
         const whichRegions = String($("#regions").find(":selected").val());
-        const numAreas = this.updateWeights(currentWeights);
-        this.buildDepartments(startyear, endyear, currentWeights, whichRegions, deptCounts, deptNames, facultycount, facultyAdjustedCount);
-        /* (university, total or average number of papers) */
-        this.computeStats(deptNames, numAreas, currentWeights);
-        const univtext = this.buildDropDown(deptNames, facultycount, facultyAdjustedCount);
-        /* Start building up the string to output. */
-        const s = this.buildOutputString(numAreas, this.countryAbbrv, deptCounts, univtext, CSRankings.minToRank);
-        let stop = performance.now();
-        console.log(`Before render: rank took ${(stop - start)} milliseconds.`);
-        /* Finally done. Redraw! */
-        document.getElementById("success").innerHTML = s;
-        $("div").scroll(function () {
-            // console.log("scrollTop = " + this.scrollTop + ", clientHeight = " + this.clientHeight + ", scrollHeight = " + this.scrollHeight);
-            // If we are nearly at the bottom, update the minimum.
-            if (this.scrollTop + this.clientHeight > this.scrollHeight - 50) {
-                const t = CSRankings.updateMinimum(this);
-                if (t) {
-                    $("div").scrollTop(t);
-                }
-            }
-        });
-        if (!update) {
-            this.navigoRouter.pause();
-        }
-        else {
-            this.navigoRouter.resume();
-        }
-        const str = this.updatedURL();
-        this.navigoRouter.navigate(str);
-        stop = performance.now();
-        console.log(`Rank took ${(stop - start)} milliseconds.`);
+        const numAreas     = this.updateWeights(currentWeights);
+
+        this.buildDepartments(
+            startyear, endyear,
+            currentWeights, whichRegions,
+            deptCounts, deptNames,
+            facultycount, facultyAdjustedCount);
+
+        /* ---- new: render faculty table directly ---- */
+        const tableHTML = this.buildFacultyTable(facultycount, facultyAdjustedCount);
+        const fullHTML  = this.buildFacultyOutputString(tableHTML);
+        document.getElementById('success').innerHTML = fullHTML;
+
+        if (!update) { this.navigoRouter.pause(); }
+        else         { this.navigoRouter.resume(); }
+
+        this.navigoRouter.navigate(this.updatedURL());
+
+        console.log(`Rank (faculty) took ${performance.now() - start} ms`);
         return false;
     }
+
     /* Turn the chart display on or off. */
     toggleChart(name) {
         const chart = document.getElementById(name + "-chart");
