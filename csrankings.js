@@ -1225,14 +1225,17 @@ class CSRankings {
     * 1.  Build a single global faculty table (no departments shown)
     * --------------------------------------------------------------*/
     buildFacultyTable(facultycount, facultyAdjustedCount) {
-        // Sort: raw pubs ↓, then adjusted pubs ↓, then last-name A→Z
+        // Sort: Adj. pubs ↓, then raw pubs ↓, then name A→Z
         const keys = Object.keys(facultycount).sort((a, b) => {
-            if (facultycount[b] === facultycount[a]) {
-                const fb = Math.round(10 * facultyAdjustedCount[b]) / 10;
-                const fa = Math.round(10 * facultyAdjustedCount[a]) / 10;
-                return fb === fa ? this.compareNames(a, b) : fb - fa;
+            const adjDiff = facultyAdjustedCount[b] - facultyAdjustedCount[a];
+            if (adjDiff !== 0) {
+                return adjDiff;                          // primary key
             }
-            return facultycount[b] - facultycount[a];
+            const rawDiff = facultycount[b] - facultycount[a];
+            if (rawDiff !== 0) {
+                return rawDiff;                          // tie-breaker #1
+            }
+            return this.compareNames(a, b);              // tie-breaker #2
         });
 
         let html =
