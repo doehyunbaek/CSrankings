@@ -306,7 +306,6 @@ class CSRankings {
             yield this.loadCountryInfo(this.countryInfo, this.countryAbbrv);
             yield this.loadCountryNames(this.countryNames);
             this.addListeners();
-            CSRankings.geoCheck();
             this.rank();
             // We've finished loading; remove the overlay.
             document.getElementById("overlay-loading").style.display = "none";
@@ -1481,27 +1480,6 @@ class CSRankings {
             this.OpenChartIcon = this.OpenBarChartIcon;
         }
         return start;
-    }
-    static geoCheck() {
-        var _a;
-        (_a = navigator.geolocation) === null || _a === void 0 ? void 0 : _a.getCurrentPosition((position) => {
-            const continent = whichContinent(position.coords.latitude, position.coords.longitude);
-            let regions = document.getElementById("regions");
-            switch (continent) {
-                case "northamerica":
-                    return;
-                case "europe":
-                case "asia":
-                case "southamerica":
-                case "africa":
-                    regions.value = continent;
-                    break;
-                default:
-                    regions.value = "world";
-                    break;
-            }
-            CSRankings.getInstance().rank();
-        });
     }
     navigation(params, query) {
         if (params !== null) {
