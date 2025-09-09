@@ -1601,49 +1601,14 @@ class CSRankings {
         for (const item of CSRankings.areas) {
             if (item in CSRankings.childMap) {
                 const kids = CSRankings.childMap[item];
-                if (!CSRankings.subsetting(kids)) {
-                    const str = `input[name=${item}]`;
-                    $(str).prop('checked', false);
-                    $(str).prop('disabled', false);
-                    kids.forEach((item) => {
-                        $(`input[name=${item}]`).prop('checked', false);
-                    });
-                }
+                const str = `input[name=${item}]`;
+                $(str).prop('checked', false);
+                $(str).prop('disabled', false);
+                kids.forEach((item) => {
+                    $(`input[name=${item}]`).prop('checked', false);
+                });
             }
         }
-    }
-    static subsetting(sibs) {
-        // Separate the siblings into above and below the fold.
-        let aboveFold = [];
-        let belowFold = [];
-        sibs.forEach((elem) => {
-            if (elem in CSRankings.nextTier) {
-                belowFold.push(elem);
-            }
-            else {
-                aboveFold.push(elem);
-            }
-        });
-        // Count how many are checked above and below.
-        let numCheckedAbove = 0;
-        aboveFold.forEach((elem) => {
-            let str = `input[name=${elem}]`;
-            let val = $(str).prop('checked');
-            if (val) {
-                numCheckedAbove++;
-            }
-        });
-        let numCheckedBelow = 0;
-        belowFold.forEach((elem) => {
-            let str = `input[name=${elem}]`;
-            let val = $(str).prop('checked');
-            if (val) {
-                numCheckedBelow++;
-            }
-        });
-        const subsettedAbove = ((numCheckedAbove > 0) && (numCheckedAbove < aboveFold.length));
-        const subsettedBelow = ((numCheckedBelow > 0) && (belowFold.length != 0));
-        return subsettedAbove || subsettedBelow;
     }
     addListeners() {
         ["toyear", "fromyear", "regions", "charttype"].forEach((key) => {
