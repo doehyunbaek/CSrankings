@@ -1897,22 +1897,7 @@ CSRankings.parentMap = {
     'vr': 'visualization',
     'sigcse': 'csed'
 };
-CSRankings.nextTier = {
-    'ase': true,
-    'issta': true,
-    'icde': true,
-    'pods': true,
-    'hpca': true,
-    'ndss': true, // for now
-    'pets': true,
-    'eurosys': true,
-    'eurographics': true,
-    'fast': true,
-    'usenixatc': true,
-    'icfp': true,
-    'oopsla': true,
-    'kdd': true,
-};
+CSRankings.nextTier = {};
 CSRankings.childMap = {};
 CSRankings.noteMap = {
     'Tech': 'https://tech.cornell.edu/',
