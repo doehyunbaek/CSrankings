@@ -310,39 +310,6 @@ class CSRankings {
             this.rank();
             // We've finished loading; remove the overlay.
             document.getElementById("overlay-loading").style.display = "none";
-            // Randomly display a survey.
-            const surveyFrequency = 1000000; // One out of this many users gets the survey (on average).
-            // Check to see if survey has already been displayed.
-            let displaySurvey = false;
-            // Keep the cookie for backwards compatibility (for now).
-            let shownAlready = document.cookie.split('; ').find(row => row.startsWith('surveyDisplayed')) ||
-                localStorage.getItem('surveyDisplayed');
-            // DISABLE SURVEY (remove the next line to re-enable)
-            shownAlready = 'disabled';
-            if (!shownAlready) {
-                // Not shown yet.
-                const randomValue = Math.floor(Math.random() * surveyFrequency);
-                displaySurvey = (randomValue == 0);
-                if (displaySurvey) {
-                    localStorage.setItem('surveyDisplayed', 'true');
-                    // Now reveal the survey.
-                    document.getElementById("overlay-survey").style.display = "block";
-                }
-            }
-            // Randomly display a sponsorship request.
-            // In the future, tie to amount of use of the site, a la Wikipedia.
-            const sponsorshipFrequency = 5; // One out of this many users gets the sponsor page (on average).
-            // Check to see if the sponsorship page has already been displayed.
-            if (!localStorage.getItem('sponsorshipDisplayed')) {
-                // Not shown yet.
-                const randomValue = Math.floor(Math.random() * sponsorshipFrequency);
-                const displaySponsor = (randomValue == 0);
-                if (!displaySurvey && displaySponsor) { // Only show if we have not shown the survey page as well.
-                    localStorage.setItem('sponsorshipDisplayed', 'true');
-                    // Now reveal the sponsorship page.
-                    document.getElementById("overlay-sponsor").style.display = "block";
-                }
-            }
         }))();
     }
     translateNameToDBLP(name) {
@@ -1536,35 +1503,6 @@ class CSRankings {
             CSRankings.getInstance().rank();
         });
     }
-    /*
-      public static geoCheck(): void {
-      // Figure out which country clients are coming from and set
-      // the default region accordingly.
-      let theUrl = 'https://geoip-db.com/jsonp/'; // 'http://freegeoip.net/json/';
-      $.getJSON(theUrl, (result) => {
-      switch (result.country_code) {
-      case "US":
-      case "CN":
-      case "IN":
-      case "KR":
-      case "JP":
-      case "TW":
-      case "SG":
-      $("#regions").val("USA");
-      CSRankings.getInstance().rank();
-      break;
-      default:
-      $("#regions").val("world");
-      CSRankings.getInstance().rank();
-      break;
-      }
-      }).fail(() => {
-      // If we can't find a location (e.g., because this site is
-      // blocked by an ad blocker), just rank anyway.
-      CSRankings.getInstance().rank();
-      });
-      }
-    */
     navigation(params, query) {
         if (params !== null) {
             // Set params (fromyear and toyear).
