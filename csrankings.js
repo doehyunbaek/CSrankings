@@ -495,7 +495,7 @@ class CSRankings {
             // Use adjusted count if this is for a department.
             /*
               DISABLED so department charts are invariant.
-              
+
               if (uname in this.stats) {
               value = this.areaDeptAdjustedCount[key+uname] + 1;
               if (value == 1) {
@@ -865,7 +865,7 @@ class CSRankings {
             /*
               DISABLING weight selection so all pie charts look the
               same regardless of which areas are currently selected:
-              
+
               if (weights[theArea] === 0) {
               continue;
               }
@@ -895,6 +895,71 @@ class CSRankings {
     buildDepartments(startyear, endyear, weights, regions, deptCounts, deptNames, facultycount, facultyAdjustedCount) {
         /* contains an author name if that author has been processed. */
         const visited = {};
+        const activeTopLevelAreas = [];
+        for (const topArea in CSRankings.topLevelAreas) {
+            let isActive = (weights[topArea] === 1);
+            if (!isActive && (topArea in CSRankings.childMap)) {
+                for (const child of CSRankings.childMap[topArea]) {
+                    if (weights[child] === 1) {
+                        isActive = true;
+                        break;
+                    }
+                }
+            }
+            if (isActive) {
+                activeTopLevelAreas.push(topArea);
+            }
+        }
+        const satisfiesIntersection = {};
+        const authorIntersectionCount = {};
+        const authorIntersectionAdjustedCount = {};
+        if (activeTopLevelAreas.length > 1) {
+            const authorAreaCounts = {};
+            const authorAreaAdjustedCounts = {};
+            for (const r in this.authors) {
+                const auth = this.authors[r];
+                if (!this.inRegion(auth.dept, regions))
+                    continue;
+                if (auth.year < startyear || auth.year > endyear)
+                    continue;
+                let area = auth.area;
+                if (weights[area] === 1) {
+                    const name = auth.name;
+                    const count = parseInt(auth.count);
+                    const adjustedCount = parseFloat(auth.adjustedcount);
+                    if (area in CSRankings.parentMap) {
+                        area = CSRankings.parentMap[area];
+                    }
+                    if (!(name in authorAreaCounts)) {
+                        authorAreaCounts[name] = {};
+                        authorAreaAdjustedCounts[name] = {};
+                        activeTopLevelAreas.forEach(a => {
+                            authorAreaCounts[name][a] = 0;
+                            authorAreaAdjustedCounts[name][a] = 0;
+                        });
+                    }
+                    authorAreaCounts[name][area] += count;
+                    authorAreaAdjustedCounts[name][area] += adjustedCount;
+                }
+            }
+            for (const name in authorAreaCounts) {
+                let minCount = Infinity;
+                let minAdjCount = Infinity;
+                let areasWithPubs = 0;
+                for (const area of activeTopLevelAreas) {
+                    if (authorAreaCounts[name][area] > 0) {
+                        areasWithPubs++;
+                    }
+                    minCount = Math.min(minCount, authorAreaCounts[name][area]);
+                    minAdjCount = Math.min(minAdjCount, authorAreaAdjustedCounts[name][area]);
+                }
+                if (areasWithPubs === activeTopLevelAreas.length) {
+                    satisfiesIntersection[name] = true;
+                    authorIntersectionCount[name] = minCount;
+                    authorIntersectionAdjustedCount[name] = minAdjCount;
+                }
+            }
+        }
         for (const r in this.authors) {
             if (!this.authors.hasOwnProperty(r)) {
                 continue;
@@ -917,6 +982,11 @@ class CSRankings {
                 continue;
             }
             const name = auth.name;
+            if (activeTopLevelAreas.length > 1) {
+                if (!(name in satisfiesIntersection)) {
+                    continue;
+                }
+            }
             // If this area is a child area, accumulate totals for parent.
             if (area in CSRankings.parentMap) {
                 area = CSRankings.parentMap[area];
@@ -931,8 +1001,14 @@ class CSRankings {
             /* Is this the first time we have seen this person? */
             if (!(name in visited)) {
                 visited[name] = true;
-                facultycount[name] = 0;
-                facultyAdjustedCount[name] = 0;
+                if (activeTopLevelAreas.length > 1) {
+                    facultycount[name] = authorIntersectionCount[name];
+                    facultyAdjustedCount[name] = authorIntersectionAdjustedCount[name];
+                }
+                else {
+                    facultycount[name] = 0;
+                    facultyAdjustedCount[name] = 0;
+                }
                 if (!(dept in deptCounts)) {
                     deptCounts[dept] = 0;
                     deptNames[dept] = [];
@@ -940,8 +1016,10 @@ class CSRankings {
                 deptNames[dept].push(name);
                 deptCounts[dept] += 1;
             }
-            facultycount[name] += count;
-            facultyAdjustedCount[name] += adjustedCount;
+            if (activeTopLevelAreas.length <= 1) {
+                facultycount[name] += count;
+                facultyAdjustedCount[name] += adjustedCount;
+            }
         }
     }
     /* Compute aggregate statistics. */
@@ -1138,7 +1216,7 @@ class CSRankings {
                 s += `<td align="right">${deptCounts[dept]}`; /* number of faculty */
                 s += "</td>";
                 s += "</tr>\n";
-                // style="width: 100%; height: 350px;" 
+                // style="width: 100%; height: 350px;"
                 s += `<tr><td colspan="4"><div class="csr-chart" id="${esc}-chart"></div></td></tr>`;
                 s += `<tr><td colspan="4"><div style="display:none;" id="${esc}-faculty">${univtext[dept]}</div></td></tr>`;
                 ties++;
@@ -1746,7 +1824,7 @@ CSRankings.parentMap = {
     'usenixatc': 'ops', // next tier
     'popl': 'plan',
     'pldi': 'plan',
-    'oopsla': 'plan', // next tier 
+    'oopsla': 'plan', // next tier
     'icfp': 'plan', // next tier
     'fse': 'soft',
     'icse': 'soft',
